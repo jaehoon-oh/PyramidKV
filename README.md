@@ -56,21 +56,14 @@ we provide a notebook `visualization.ipynb` to reproduce the visualization resul
 Model attention maps for different layers would be stored at `./attention`
 
 
-
-## Requirements
-
-```python
-transformers >= 4.41
-flash-attn >= 2.4.0.post1
-```
-
 ##  Installation
 
 ```python
 
 git clone https://github.com/Zefan-Cai/PyramidKV.git
 cd PyramidKV
-pip install -r requirements.txt .
+pip install -r requirements.txt
+pip install flash-attn --no-build-isolation
 
 ```
 
