@@ -2,8 +2,7 @@
 export HF_TOKEN="hf_XXXX"
 export CUDA_VISIBLE_DEVICES=0
 
-methods=("FullKV" "PyramidKV" "SnapKV" "H2O" "StreamingLLM") # Support FullKV, PyramidKV, SnapKV, H2O, StreamingLLM
-methods=("PyramidKV")
+methods=("FullKV" "PyramidKV" "SnapKV" "H2O" "PyramidKV_avg" "SnapKV_avg" "H2O_avg") # Support FullKV, PyramidKV, SnapKV, H2O, StreamingLLM
 max_capacity_prompts=128 # 128,2048 in paper
 attn_implementation="flash_attention_2" # Support "flash_attention_2", "sdpa", "eager"
 model_path="meta-llama/Meta-Llama-3-8B-Instruct"

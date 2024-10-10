@@ -1,6 +1,1 @@
-
-results_dir=$1
-
-
-python3 eval.py \
-    --results_dir ${results_dir}
+python3 eval.py --results_dir "/workspace/PyramidKV/results_longbench/meta-llama-3-8b-instruct_128"

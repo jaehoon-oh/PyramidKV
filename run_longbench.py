@@ -13,7 +13,7 @@ datasets = ["narrativeqa", "qasper", "multifieldqa_en", "hotpotqa", "2wikimqa", 
             "gov_report", "qmsum", "multi_news", "trec", "triviaqa", "samsum", \
             "passage_count", "passage_retrieval_en", "lcc", "repobench-p"]
 
-# datasets = ["narrativeqa"]
+datasets = ["narrativeqa", "qasper", "multifieldqa_en"]
 
 dataset2maxlen = {
     "narrativeqa": 128,
@@ -162,12 +162,14 @@ def main(model, kv_compression_method, dataset, args):
         
         if kv_compression_method != "fullkv":
             max_capacity_prompts = args.max_capacity_prompts
-            if kv_compression_method in ["snapkv","pyramidkv","h2o"]:
-                window_sizes = 8
+            if ("snapkv" in kv_compression_method) or \
+               ("pyramidkv" in kv_compression_method) or \
+               ("h2o" in kv_compression_method):
+                window_sizes = 16
             elif kv_compression_method in ["streamingllm"]:
                 window_sizes = max_capacity_prompts - 4
 
-            kernel_sizes = 7
+            kernel_sizes = 5
             pooling = "maxpool"
 
             layers = len(model.model.layers)
@@ -269,6 +271,7 @@ if __name__ == "__main__":
         use_cache=args.use_cache,
         attn_implementation=args.attn_implementation
     )
+    model.config.kv_compression_method = kv_compression_method
     model.eval()
 
     for idx, dataset in enumerate(datasets):

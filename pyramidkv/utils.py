@@ -22,8 +22,8 @@ def repeat_kv(hidden_states: torch.Tensor, n_rep: int) -> torch.Tensor:
 
 
 class PyramidKVCluster():
-    def __init__(self, num_hidden_layers = 32, window_size = 64, max_capacity_prompt = 256 + 64, kernel_size = 5, pooling = 'avgpool', beta = 20, num_layers = 80, layer_idx=None):
-        
+    def __init__(self, kv_compression_method, num_hidden_layers = 32, window_size = 64, max_capacity_prompt = 256 + 64, kernel_size = 5, pooling = 'avgpool', beta = 20, num_layers = 80, layer_idx=None):
+        self.kv_compression_method = kv_compression_method
         self.layer_idx = layer_idx
         self.num_hidden_layers = num_hidden_layers
         
@@ -63,10 +63,17 @@ class PyramidKVCluster():
         steps = (max_num - min_num) // (self.num_hidden_layers - 1)
         max_capacity_prompt = max_num - self.layer_idx * steps
         
-        print(f"PyramidKV max_capacity_prompt {max_capacity_prompt}")
+        # print(f"PyramidKV max_capacity_prompt {max_capacity_prompt}")
         if q_len < self.max_capacity_prompt:
             return key_states, value_states
         elif q_len < (self.max_capacity_prompt - self.window_size) * 2:
+            if "avg" in self.kv_compression_method:
+                query_states_avg = torch.mean(query_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
+                key_states_avg = torch.mean(key_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
+
+                query_states -= query_states_avg
+                key_states -= key_states_avg
+
             attn_weights = torch.matmul(query_states[..., -self.window_size:, :], key_states.transpose(2, 3)) / math.sqrt(head_dim)
             mask = torch.full((self.window_size, self.window_size), torch.finfo(attn_weights.dtype).min, device=attn_weights.device)
             mask_cond = torch.arange(mask.size(-1), device=attn_weights.device)
@@ -122,7 +129,8 @@ class PyramidKVCluster():
             return key_states, value_states
 
 class SnapKVCluster():
-    def __init__(self, window_size = 64, max_capacity_prompt = 256 + 64, kernel_size = 5, pooling = 'avgpool'):
+    def __init__(self, kv_compression_method, window_size = 64, max_capacity_prompt = 256 + 64, kernel_size = 5, pooling = 'avgpool'):
+        self.kv_compression_method = kv_compression_method
         self.window_size = window_size
         self.max_capacity_prompt = max_capacity_prompt
         assert self.max_capacity_prompt - self.window_size > 0
@@ -142,11 +150,18 @@ class SnapKVCluster():
         assert key_states.shape[-2] == query_states.shape[-2]
         bsz, num_heads, q_len, head_dim = query_states.shape
         
-        print(f"SnapKV max_capacity_prompt {self.max_capacity_prompt}")
+        # print(f"SnapKV max_capacity_prompt {self.max_capacity_prompt}")
         
         if q_len < self.max_capacity_prompt:
             return key_states, value_states
         else:
+            if "avg" in self.kv_compression_method:
+                query_states_avg = torch.mean(query_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
+                key_states_avg = torch.mean(key_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
+
+                query_states -= query_states_avg
+                key_states -= key_states_avg
+
             attn_weights = torch.matmul(query_states[..., -self.window_size:, :], key_states.transpose(2, 3)) / math.sqrt(head_dim)
             mask = torch.full((self.window_size, self.window_size), torch.finfo(attn_weights.dtype).min, device=attn_weights.device)
             mask_cond = torch.arange(mask.size(-1), device=attn_weights.device)
@@ -176,7 +191,8 @@ class SnapKVCluster():
 
 
 class H2OKVCluster():
-    def __init__(self, window_size = 64, max_capacity_prompt = 256 + 64, kernel_size = 5, pooling = 'avgpool'):
+    def __init__(self, kv_compression_method, window_size = 64, max_capacity_prompt = 256 + 64, kernel_size = 5, pooling = 'avgpool'):
+        self.kv_compression_method = kv_compression_method
         self.window_size = window_size
         self.max_capacity_prompt = max_capacity_prompt
         assert self.max_capacity_prompt - self.window_size > 0
@@ -196,11 +212,18 @@ class H2OKVCluster():
         assert key_states.shape[-2] == query_states.shape[-2]
         bsz, num_heads, q_len, head_dim = query_states.shape
         
-        print(f"H2O max_capacity_prompt {self.max_capacity_prompt}")
+        # print(f"H2O max_capacity_prompt {self.max_capacity_prompt}")
         
         if q_len < self.max_capacity_prompt:
             return key_states, value_states
         else:
+            if "avg" in self.kv_compression_method:
+                query_states_avg = torch.mean(query_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
+                key_states_avg = torch.mean(key_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
+
+                query_states -= query_states_avg
+                key_states -= key_states_avg
+
             attn_weights = torch.matmul(query_states[..., -self.window_size:, :], key_states.transpose(2, 3)) / math.sqrt(head_dim)
             mask = torch.full((self.window_size, self.window_size), torch.finfo(attn_weights.dtype).min, device=attn_weights.device)
             mask_cond = torch.arange(mask.size(-1), device=attn_weights.device)
@@ -231,7 +254,8 @@ class H2OKVCluster():
 
 
 class StreamingLLMKVCluster():
-    def __init__(self, window_size = 64, max_capacity_prompt = 256 + 64, kernel_size = 5, pooling = 'avgpool'):
+    def __init__(self, kv_compression_method, window_size = 64, max_capacity_prompt = 256 + 64, kernel_size = 5, pooling = 'avgpool'):
+        self.kv_compression_method = kv_compression_method
         self.window_size = window_size
         self.max_capacity_prompt = max_capacity_prompt
         assert self.max_capacity_prompt - self.window_size > 0
@@ -251,7 +275,7 @@ class StreamingLLMKVCluster():
         assert key_states.shape[-2] == query_states.shape[-2]
         bsz, num_heads, q_len, head_dim = query_states.shape
         
-        print(f"StreamingLLM max_capacity_prompt {self.max_capacity_prompt}")
+        # print(f"StreamingLLM max_capacity_prompt {self.max_capacity_prompt}")
         
         if q_len < self.max_capacity_prompt:
             return key_states, value_states
@@ -289,7 +313,7 @@ class StreamingLLMKVCluster():
             return key_states, value_states
 
 
-def init_pyramidkv(self, num_hidden_layers):
+def init_pyramidkv(self, kv_compression_method, num_hidden_layers):
     if not hasattr(self, "kv_cluster"):
         if not hasattr(self.config, 'window_size'):
             self.config.window_size = 32
@@ -300,8 +324,8 @@ def init_pyramidkv(self, num_hidden_layers):
         if not hasattr(self.config, 'pooling'):
             self.config.pooling = 'avgpool'
     
-    
     self.kv_cluster = PyramidKVCluster( 
+        kv_compression_method = kv_compression_method,
         num_hidden_layers = num_hidden_layers,
         layer_idx = self.layer_idx,
         window_size = self.config.window_size, 
@@ -310,7 +334,7 @@ def init_pyramidkv(self, num_hidden_layers):
         pooling = self.config.pooling
         )
  
-def init_snapkv(self):
+def init_snapkv(self, kv_compression_method):
     if not hasattr(self, "kv_cluster"):
         if not hasattr(self.config, 'window_size'):
             self.config.window_size = 32
@@ -323,13 +347,14 @@ def init_snapkv(self):
     
     
     self.kv_cluster = SnapKVCluster( 
+        kv_compression_method = kv_compression_method,
         window_size = self.config.window_size, 
         max_capacity_prompt = self.config.max_capacity_prompt, 
         kernel_size = self.config.kernel_size,
         pooling = self.config.pooling
         )
 
-def init_H2O(self):
+def init_H2O(self, kv_compression_method):
     if not hasattr(self, "kv_cluster"):
         if not hasattr(self.config, 'window_size'):
             self.config.window_size = 32
@@ -342,13 +367,14 @@ def init_H2O(self):
     
     
     self.kv_cluster = H2OKVCluster(
+        kv_compression_method = kv_compression_method,
         window_size = self.config.window_size, 
         max_capacity_prompt = self.config.max_capacity_prompt, 
         kernel_size = self.config.kernel_size,
         pooling = self.config.pooling
         )
 
-def init_StreamingLLM(self):
+def init_StreamingLLM(self, kv_compression_method):
     if not hasattr(self, "kv_cluster"):
         if not hasattr(self.config, 'window_size'):
             self.config.window_size = 32
@@ -361,6 +387,7 @@ def init_StreamingLLM(self):
     
     
     self.kv_cluster = StreamingLLMKVCluster(
+        kv_compression_method = kv_compression_method,
         window_size = self.config.window_size, 
         max_capacity_prompt = self.config.max_capacity_prompt, 
         kernel_size = self.config.kernel_size,

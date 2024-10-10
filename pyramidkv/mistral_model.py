@@ -16,7 +16,7 @@ from transformers.utils import (
     logging,
     is_flash_attn_2_available,
 )
-from pyramidkv.pyramidkv_utils import init_pyramidkv,init_snapkv,init_H2O,init_StreamingLLM
+from pyramidkv.utils import init_pyramidkv,init_snapkv,init_H2O,init_StreamingLLM
 
 if is_flash_attn_2_available():
     from flash_attn import flash_attn_func, flash_attn_varlen_func
@@ -44,7 +44,7 @@ def mistral_attn_forward_H2O(
         )
     bsz, q_len, _ = hidden_states.size()
 
-    init_H2O(self)
+    init_H2O(self, kv_compression_method=self.config.kv_compression_method)
 
     query_states = self.q_proj(hidden_states)
     key_states = self.k_proj(hidden_states)
@@ -159,7 +159,7 @@ def mistral_sdpa_attn_forward_H2O(
             use_cache=use_cache,
         )
 
-    init_H2O(self)
+    init_H2O(self, kv_compression_method=self.config.kv_compression_method)
 
     bsz, q_len, _ = hidden_states.size()
 
@@ -287,7 +287,7 @@ def mistral_flash_attn2_forward_H2O(
     **kwargs,
 ):
     # [SnapKV] register kv_cluster
-    init_H2O(self)
+    init_H2O(self, kv_compression_method=self.config.kv_compression_method)
     if "padding_mask" in kwargs:
         warnings.warn(
             "Passing `padding_mask` is deprecated and will be removed in v4.37. Please make sure use `attention_mask` instead.`"
@@ -459,7 +459,7 @@ def mistral_attn_forward_StreamingLLM(
         )
     bsz, q_len, _ = hidden_states.size()
 
-    init_StreamingLLM(self)
+    init_StreamingLLM(self, kv_compression_method=self.config.kv_compression_method)
 
     query_states = self.q_proj(hidden_states)
     key_states = self.k_proj(hidden_states)
@@ -576,7 +576,7 @@ def mistral_sdpa_attn_forward_StreamingLLM(
             use_cache=use_cache,
         )
 
-    init_StreamingLLM(self)
+    init_StreamingLLM(self, kv_compression_method=self.config.kv_compression_method)
 
     bsz, q_len, _ = hidden_states.size()
 
@@ -707,7 +707,7 @@ def mistral_flash_attn2_forward_StreamingLLM(
     **kwargs,
 ):
     # [SnapKV] register kv_cluster
-    init_StreamingLLM(self)
+    init_StreamingLLM(self, kv_compression_method=self.config.kv_compression_method)
     if "padding_mask" in kwargs:
         warnings.warn(
             "Passing `padding_mask` is deprecated and will be removed in v4.37. Please make sure use `attention_mask` instead.`"
@@ -879,7 +879,9 @@ def mistral_attn_forward_PyramidKV(
         )
     bsz, q_len, _ = hidden_states.size()
 
-    init_pyramidkv(self, num_hidden_layers=self.config.num_hidden_layers)
+    init_pyramidkv(self,
+                   kv_compression_method=self.config.kv_compression_method,
+                   num_hidden_layers=self.config.num_hidden_layers)
 
     query_states = self.q_proj(hidden_states)
     key_states = self.k_proj(hidden_states)
@@ -994,7 +996,9 @@ def mistral_sdpa_attn_forward_PyramidKV(
             use_cache=use_cache,
         )
 
-    init_pyramidkv(self, num_hidden_layers=self.config.num_hidden_layers)
+    init_pyramidkv(self,
+                   kv_compression_method=self.config.kv_compression_method,
+                   num_hidden_layers=self.config.num_hidden_layers)
 
     bsz, q_len, _ = hidden_states.size()
 
@@ -1118,7 +1122,9 @@ def mistral_flash_attn2_forward_PyramidKV(
     **kwargs,
 ):
     
-    init_pyramidkv(self, num_hidden_layers=self.config.num_hidden_layers)
+    init_pyramidkv(self,
+                   kv_compression_method=self.config.kv_compression_method,
+                   num_hidden_layers=self.config.num_hidden_layers)
     if "padding_mask" in kwargs:
         warnings.warn(
             "Passing `padding_mask` is deprecated and will be removed in v4.37. Please make sure use `attention_mask` instead.`"
@@ -1290,7 +1296,7 @@ def mistral_attn_forward_SnapKV(
         )
     bsz, q_len, _ = hidden_states.size()
 
-    init_snapkv(self)
+    init_snapkv(self, kv_compression_method=self.config.kv_compression_method)
 
     query_states = self.q_proj(hidden_states)
     key_states = self.k_proj(hidden_states)
@@ -1402,7 +1408,7 @@ def mistral_sdpa_attn_forward_SnapKV(
             use_cache=use_cache,
         )
 
-    init_snapkv(self)
+    init_snapkv(self, kv_compression_method=self.config.kv_compression_method)
 
     bsz, q_len, _ = hidden_states.size()
 
@@ -1528,7 +1534,7 @@ def mistral_flash_attn2_forward_SnapKV(
     **kwargs,
 ):
     # [SnapKV] register kv_cluster
-    init_snapkv(self)
+    init_snapkv(self, kv_compression_method=self.config.kv_compression_method)
     if "padding_mask" in kwargs:
         warnings.warn(
             "Passing `padding_mask` is deprecated and will be removed in v4.37. Please make sure use `attention_mask` instead.`"
