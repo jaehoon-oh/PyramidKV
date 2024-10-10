@@ -101,6 +101,12 @@ class PyramidKVCluster():
             value_states = torch.cat([v_past_compress, v_cur], dim = 2)
             return key_states, value_states
         else:
+            if "avg" in self.kv_compression_method:
+                query_states_avg = torch.mean(query_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
+                key_states_avg = torch.mean(key_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
+
+                query_states -= query_states_avg
+                key_states -= key_states_avg
             attn_weights = torch.matmul(query_states[..., -self.window_size:, :], key_states.transpose(2, 3)) / math.sqrt(head_dim)
             mask = torch.full((self.window_size, self.window_size), torch.finfo(attn_weights.dtype).min, device=attn_weights.device)
             mask_cond = torch.arange(mask.size(-1), device=attn_weights.device)

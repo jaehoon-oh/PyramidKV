@@ -99,20 +99,19 @@ if __name__ == '__main__':
     results_list = [
         ["dataset"],
         ["fullkv"],
-        ["snapkv"],
-        ["h2o"],
         ["pyramidkv"],
-        ["snapkv_avg"],
-        ["h2o_avg"],
         ["pyramidkv_avg"],
+        ["snapkv"],
+        ["snapkv_avg"],
+        ["h2o"],
+        ["h2o_avg"],
     ]
     
     for dataset in dataset_list:
         
         results_list[0].append(dataset)
         
-        for idx, method in enumerate(["fullkv", "snapkv", "h2o", "pyramidkv", "snapkv_avg", "h2o_avg", "pyramidkv_avg"]):
-        # for idx, method in enumerate(["H2_global", "PyramidKV_global", "local"]):
+        for idx, method in enumerate([r[0] for r in results_list if r[0] != "dataset"]):
             try:
                 args.method = method
                 args.dataset = dataset
