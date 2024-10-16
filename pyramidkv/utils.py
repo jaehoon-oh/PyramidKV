@@ -101,15 +101,16 @@ class PyramidKVCluster():
         if q_len < self.max_capacity_prompt:
             return key_states, value_states
         else:
-            if "avg" in self.kv_compression_method:
-                query_states_avg = torch.mean(query_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
-                key_states_avg = torch.mean(key_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
-
-                query_states -= query_states_avg
-                key_states -= key_states_avg
-        
             attn_weights = get_attn_weights(query_states, key_states, self.window_size, head_dim, q='obs_window')
             attn_weights_sum = attn_weights[:, :, -self.window_size:, :-self.window_size].sum(dim = -2)
+
+            if "avg" in self.kv_compression_method:
+                key_states_avg = torch.mean(key_states, dim=1, keepdim=True)
+                key_states_avg = key_states_avg.expand(-1, num_heads, -1, -1)
+                avg_attn_weights = get_attn_weights(query_states, key_states_avg, self.window_size, head_dim, q='obs_window')
+                avg_attn_weights_sum = avg_attn_weights[:, :, -self.window_size:, :-self.window_size].sum(dim = -2)
+                attn_weights_sum += avg_attn_weights_sum
+
             attn_cache = pool_kv(attn_weights_sum, self.pooling, self.kernel_size)
 
             if q_len < (self.max_capacity_prompt - self.window_size) * 2:
@@ -145,15 +146,16 @@ class SnapKVCluster():
         if q_len < self.max_capacity_prompt:
             return key_states, value_states
         else:
-            if "avg" in self.kv_compression_method:
-                query_states_avg = torch.mean(query_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
-                key_states_avg = torch.mean(key_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
-
-                query_states -= query_states_avg
-                key_states -= key_states_avg
-
             attn_weights = get_attn_weights(query_states, key_states, self.window_size, head_dim, q='obs_window')
             attn_weights_sum = attn_weights[:, :, -self.window_size:, :-self.window_size].sum(dim = -2)
+
+            if "avg" in self.kv_compression_method:
+                key_states_avg = torch.mean(key_states, dim=1, keepdim=True)
+                key_states_avg = key_states_avg.expand(-1, num_heads, -1, -1)
+                avg_attn_weights = get_attn_weights(query_states, key_states_avg, self.window_size, head_dim, q='obs_window')
+                avg_attn_weights_sum = avg_attn_weights[:, :, -self.window_size:, :-self.window_size].sum(dim = -2)
+                attn_weights_sum += avg_attn_weights_sum
+
             attn_cache = pool_kv(attn_weights_sum, self.pooling, self.kernel_size)
 
             indices = attn_cache.topk(self.max_capacity_prompt - self.window_size, dim=-1).indices
@@ -187,15 +189,20 @@ class H2OKVCluster():
         if q_len < self.max_capacity_prompt:
             return key_states, value_states
         else:
-            if "avg" in self.kv_compression_method:
-                query_states_avg = torch.mean(query_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
-                key_states_avg = torch.mean(key_states, dim=1, keepdim=True).expand(-1, num_heads, -1, -1)
-
-                query_states -= query_states_avg
-                key_states -= key_states_avg
-
             attn_weights = get_attn_weights(query_states, key_states, self.window_size, head_dim, q='full')
             attn_weights_sum = attn_weights[:, :, :, :-self.window_size].sum(dim = -2)
+            divisors = torch.arange(7500, 7500-attn_weights_sum.shape[2], -1).float() # 7500 is max length for llama3-8b-instruct
+            divisors = divisors.unsqueeze(0).unsqueeze(0).expand(bsz, num_heads, -1).to(attn_weights.device)
+            attn_weights_sum = attn_weights_sum / divisors
+
+            if "avg" in self.kv_compression_method:
+                key_states_avg = torch.mean(key_states, dim=1, keepdim=True)
+                key_states_avg = key_states_avg.expand(-1, num_heads, -1, -1)
+                avg_attn_weights = get_attn_weights(query_states, key_states_avg, self.window_size, head_dim, q='full')
+                avg_attn_weights_sum = avg_attn_weights[:, :, :, :-self.window_size].sum(dim = -2)
+                avg_attn_weights_sum = avg_attn_weights_sum / divisors
+                attn_weights_sum += avg_attn_weights_sum
+
             attn_cache = attn_weights_sum
 
             indices = attn_cache.topk(self.max_capacity_prompt - self.window_size, dim=-1).indices
