@@ -13,8 +13,6 @@ datasets = ["narrativeqa", "qasper", "multifieldqa_en", "hotpotqa", "2wikimqa", 
             "gov_report", "qmsum", "multi_news", "trec", "triviaqa", "samsum", \
             "passage_count", "passage_retrieval_en", "lcc", "repobench-p"]
 
-datasets = ["narrativeqa", "qasper", "multifieldqa_en"]
-
 dataset2maxlen = {
     "narrativeqa": 128,
     "qasper": 128,
@@ -64,7 +62,7 @@ model2prompt = {
 }
 
 model2maxlen = {
-    "meta-llama-3-8b-instruct": 7950,
+    "meta-llama-3-8b-instruct": 7500,
 }
 
 def set_seed(seed):
